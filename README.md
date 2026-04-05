@@ -11,6 +11,16 @@ MAI-Image-2 plugin for OpenClaw using Azure AI Foundry and optional Blob URL del
 
 This plugin adds text-to-image generation to OpenClaw using Azure AI Foundry MAI-Image-2. It can return the generated image directly and optionally upload it to Azure Blob Storage so channels that prefer public HTTPS media URLs can render the output more reliably.
 
+## Compatibility
+
+This repository targets OpenClaw environments that can:
+
+* Load local plugins from a filesystem path
+* Pass provider configuration into the plugin runtime
+* Return image tool results to the calling channel
+
+Because media delivery behavior varies by channel and OpenClaw version, validate the plugin on the channels you care about before production use.
+
 ## Features
 
 * MAI-Image-2 image generation for OpenClaw
@@ -48,6 +58,18 @@ Supported plugin configuration keys:
 * `mediaStorageKey`: Azure Blob Storage key
 * `mediaStorageContainer`: blob container name used for generated images
 
+## Authentication
+
+The plugin is designed to resolve credentials at runtime instead of hardcoding secrets in the repository.
+
+Typical runtime sources are:
+
+* OpenClaw model provider configuration
+* Plugin configuration values
+* Environment variables exposed to the OpenClaw process
+
+For public usage, prefer environment or host-secret injection instead of storing keys directly in checked-in config files.
+
 ## Installation
 
 The exact plugin-loading workflow depends on your OpenClaw host, but the minimum setup is:
@@ -58,6 +80,8 @@ The exact plugin-loading workflow depends on your OpenClaw host, but the minimum
 4. Provide the AI API key through your OpenClaw runtime configuration or environment.
 5. If you need public URLs for generated images, also configure Azure Blob Storage.
 6. Restart OpenClaw so the plugin is loaded.
+
+If your channel integration already delivers binary image results correctly, Blob upload may be optional. If your channel expects public media URLs, Blob storage becomes the more reliable path.
 
 ## OpenClaw Configuration Example
 
@@ -86,6 +110,23 @@ The exact plugin-loading workflow depends on your OpenClaw host, but the minimum
 }
 ```
 
+## Usage Notes
+
+This plugin works best when prompts sent to the image tool are concrete and visually descriptive. In practice:
+
+* Prefer explicit subject, style, lighting, and composition details
+* Use default dimensions unless your hosting environment needs a different aspect ratio
+* Treat Blob upload as a delivery feature, not a generation requirement
+
+## What This Repository Does Not Include
+
+This public repository contains the plugin runtime, tests, and configuration examples. It does not include:
+
+* Full Azure deployment templates for the private production environment
+* VM provisioning scripts
+* Key Vault automation
+* Network or domain setup
+
 ## Testing
 
 Run the plugin tests with:
@@ -93,6 +134,20 @@ Run the plugin tests with:
 ```bash
 npm test
 ```
+
+## Development
+
+Useful local commands:
+
+```bash
+npm test
+```
+
+Key files to inspect when modifying behavior:
+
+* `lib/api.js` for MAI-Image-2 API calls
+* `lib/blob.js` for Blob upload and signing behavior
+* `lib/tool.js` for dimension validation
 
 ## Limitations
 
