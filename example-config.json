@@ -1,0 +1,22 @@
+{
+  "plugins": {
+    "allow": ["mai-image"],
+    "entries": {
+      "mai-image": {
+        "enabled": true,
+        "config": {
+          "endpoint": "https://<resource>.cognitiveservices.azure.com",
+          "deploymentName": "mai-image-2",
+          "defaultWidth": 1024,
+          "defaultHeight": 1024,
+          "mediaStorageAccount": "<storage-account>",
+          "mediaStorageKey": "<storage-key>",
+          "mediaStorageContainer": "images"
+        }
+      }
+    },
+    "load": {
+      "paths": ["/absolute/path/to/openclaw-mai-image-plugin"]
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "id": "mai-image",
+  "name": "MAI Image",
+  "version": "0.1.0",
+  "description": "Generate images from text prompts using Azure AI Foundry MAI-Image-2 model.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "endpoint": {
+        "type": "string",
+        "description": "Azure AI Foundry endpoint URL (e.g. https://<resource>.cognitiveservices.azure.com)"
+      },
+      "deploymentName": {
+        "type": "string",
+        "default": "mai-image-2"
+      },
+      "defaultWidth": {
+        "type": "integer",
+        "minimum": 768,
+        "maximum": 1024,
+        "default": 1024
+      },
+      "defaultHeight": {
+        "type": "integer",
+        "minimum": 768,
+        "maximum": 1024,
+        "default": 1024
+      },
+      "mediaStorageAccount": {
+        "type": "string",
+        "description": "Azure Blob Storage account name for public image hosting"
+      },
+      "mediaStorageKey": {
+        "type": "string",
+        "description": "Azure Blob Storage shared key (or __KEYVAULT__ placeholder)"
+      },
+      "mediaStorageContainer": {
+        "type": "string",
+        "default": "images",
+        "description": "Blob container name for uploaded images"
+      }
+    }
+  },
+  "uiHints": {
+    "endpoint": {
+      "label": "Foundry Endpoint",
+      "placeholder": "https://oc-family-foundry-XXXX.cognitiveservices.azure.com"
+    },
+    "deploymentName": {
+      "label": "Deployment Name",
+      "placeholder": "mai-image-2"
+    },
+    "defaultWidth": {
+      "label": "Default Width (px)"
+    },
+    "defaultHeight": {
+      "label": "Default Height (px)"
+    },
+    "mediaStorageAccount": {
+      "label": "Blob Storage Account",
+      "placeholder": "ocfamilymediaXXXXX"
+    },
+    "mediaStorageKey": {
+      "label": "Blob Storage Key",
+      "sensitive": true
+    },
+    "mediaStorageContainer": {
+      "label": "Blob Container Name",
+      "placeholder": "images"
+    }
+  }
+}
