@@ -1,6 +1,30 @@
 const crypto = require("crypto");
 const { generateImage } = require("./lib/api");
 const { uploadToBlob } = require("./lib/blob");
+const { sendTelegramPhoto } = require("./lib/delivery");
+
+function normalizeOptionalValue(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (text.startsWith("__") && text.endsWith("__")) return "";
+  if (text.startsWith("<") && text.endsWith(">")) return "";
+  return text;
+}
+
+function normalizeChannel(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function buildResultContent({ channel, b64, publicUrl }) {
+  const normalizedChannel = normalizeChannel(channel);
+  const content = [{ type: "image", data: b64, mimeType: "image/png" }];
+
+  if (publicUrl) {
+    content.push({ type: "text", text: `Image URL: ${publicUrl}` });
+  }
+
+  return content;
+}
 
 function register(api) {
   const cfg = Object.assign(
@@ -15,6 +39,9 @@ function register(api) {
     },
     api.pluginConfig || {},
   );
+
+  cfg.mediaStorageAccount = normalizeOptionalValue(cfg.mediaStorageAccount);
+  cfg.mediaStorageContainer = normalizeOptionalValue(cfg.mediaStorageContainer) || "images";
 
   // Resolve endpoint from config or provider settings
   if (!cfg.endpoint) {
@@ -40,7 +67,8 @@ function register(api) {
   }
 
   function resolveStorageKey() {
-    if (cfg.mediaStorageKey) return cfg.mediaStorageKey;
+    const configured = normalizeOptionalValue(cfg.mediaStorageKey);
+    if (configured && !configured.startsWith("__KEYVAULT__:")) return configured;
     if (api.resolveSecret) {
       const secret = api.resolveSecret("media-storage-key");
       if (secret) return secret;
@@ -51,7 +79,7 @@ function register(api) {
   // Register as a custom tool returning proper AgentToolResult with ImageContent.
   // This bypasses the image_generate core tool and directly returns the image.
   api.registerTool(
-    {
+    (toolCtx) => ({
       name: "mai_image_generate",
       label: "mai_image_generate",
       description:
@@ -87,9 +115,32 @@ function register(api) {
 
           const b64 = result.b64_json;
           const buffer = Buffer.from(b64, "base64");
-          let publicUrl = "";
+          const channel = normalizeChannel(toolCtx?.messageChannel);
 
-          // Upload to blob for public URL delivery
+          // Telegram: send photo directly via Bot API for native inline image.
+          if (channel === "telegram") {
+            const botToken = api.config?.channels?.telegram?.botToken;
+            const dc = toolCtx?.deliveryContext;
+            // deliveryContext.to has format "telegram:CHAT_ID" — strip prefix
+            const rawTo = dc?.to || "";
+            const chatId = rawTo.replace(/^telegram:/i, "").trim();
+            if (botToken && chatId) {
+              try {
+                await sendTelegramPhoto({ botToken, chatId, buffer });
+                api.logger?.info?.(`mai-image: sent photo to telegram chat=${chatId}`);
+                return {
+                  content: [{ type: "text", text: "Image generated and delivered as a photo." }],
+                  details: { status: "ok", delivery: "telegram-direct", size: buffer.length },
+                };
+              } catch (err) {
+                api.logger?.warn?.(`mai-image: telegram sendPhoto failed (${err.message}), falling back to blob`);
+              }
+            }
+          }
+
+          // Other channels (WhatsApp, LINE, etc.) or Telegram fallback:
+          // upload to Azure Blob Storage for a public URL.
+          let publicUrl = "";
           const storageKey = resolveStorageKey();
           if (cfg.mediaStorageAccount && storageKey) {
             try {
@@ -108,14 +159,11 @@ function register(api) {
             }
           }
 
-          const content = [
-            { type: "image", data: b64, mimeType: "image/png" },
-          ];
-          if (publicUrl) {
-            content.push({ type: "text", text: `Image generated and available at: ${publicUrl}` });
-          } else {
-            content.push({ type: "text", text: `Image generated (${buffer.length} bytes).` });
-          }
+          const content = buildResultContent({
+            channel,
+            b64,
+            publicUrl,
+          });
 
           return { content, details: { status: "ok", publicUrl, size: buffer.length } };
         } catch (err) {
@@ -125,7 +173,7 @@ function register(api) {
           };
         }
       },
-    },
+    }),
   );
 
   api.on(
@@ -135,9 +183,9 @@ function register(api) {
         "You have a mai_image_generate tool that generates images from text prompts using MAI-Image-2. " +
         "When the user asks you to generate, create, or draw an image, use this tool. " +
         "Provide a detailed English prompt for best results. " +
-        "IMPORTANT: After calling the tool, the result will contain a public URL starting with https://. " +
-        "You MUST include this URL in your reply text so the user can view the image. " +
-        "Format: show the URL on its own line so it renders as a clickable link.",
+        "After calling the tool: if the result says the image was delivered as a photo, just confirm briefly — the user already received it. " +
+        "If the result contains a URL (starting with https://), include EXACTLY that URL in your reply so the user can view the image. " +
+        "NEVER fabricate or guess image URLs. Only use URLs that appear verbatim in the tool result.",
     }),
     { priority: 20 },
   );
@@ -149,4 +197,11 @@ function register(api) {
 }
 
 module.exports = register;
-module.exports._internals = { generateImage, uploadToBlob };
+module.exports._internals = {
+  generateImage,
+  uploadToBlob,
+  sendTelegramPhoto,
+  normalizeOptionalValue,
+  normalizeChannel,
+  buildResultContent,
+};
