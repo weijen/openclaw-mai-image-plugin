@@ -9,7 +9,10 @@ MAI-Image-2 plugin for OpenClaw using Azure AI Foundry and optional Blob URL del
 
 ## Overview
 
-This plugin adds text-to-image generation to OpenClaw using Azure AI Foundry MAI-Image-2. It can return the generated image directly and optionally upload it to Azure Blob Storage so channels that prefer public HTTPS media URLs can render the output more reliably.
+This plugin adds text-to-image generation to OpenClaw using Azure AI Foundry MAI-Image-2. It uses channel-aware delivery:
+
+* **Telegram:** sends generated photos directly via the Bot API `sendPhoto` endpoint for native inline images
+* **Other channels (WhatsApp, LINE, etc.):** uploads images to Azure Blob Storage and returns a public HTTPS URL that the LLM includes in its reply
 
 ## Compatibility
 
@@ -25,9 +28,9 @@ Because media delivery behavior varies by channel and OpenClaw version, validate
 
 * MAI-Image-2 image generation for OpenClaw
 * Azure AI Foundry integration
-* Optional Azure Blob upload for public URL delivery
+* Channel-aware delivery: Telegram direct photo, other channels via Blob URL
 * Dimension validation for supported image sizes
-* Regression tests for dimensions, blob signing, and API behavior
+* Regression tests for dimensions, blob signing, delivery, and API behavior
 
 ## Prerequisites
 
@@ -37,11 +40,12 @@ Because media delivery behavior varies by channel and OpenClaw version, validate
 
 ## Repository Layout
 
-* `index.js`: plugin entry point
+* `index.js`: plugin entry point (uses `registerTool` with factory function pattern)
 * `lib/api.js`: image generation API client
 * `lib/blob.js`: Azure Blob upload helper
+* `lib/delivery.js`: Telegram Bot API `sendPhoto` helper
 * `lib/tool.js`: dimension validation helpers
-* `test/`: regression tests for dimensions and blob behavior
+* `test/`: regression tests for dimensions, blob, delivery, and tool behavior
 * `openclaw.plugin.json`: plugin manifest and configuration schema
 
 ## Configuration
@@ -81,7 +85,7 @@ The exact plugin-loading workflow depends on your OpenClaw host, but the minimum
 5. If you need public URLs for generated images, also configure Azure Blob Storage.
 6. Restart OpenClaw so the plugin is loaded.
 
-If your channel integration already delivers binary image results correctly, Blob upload may be optional. If your channel expects public media URLs, Blob storage becomes the more reliable path.
+For Telegram, the plugin sends photos directly via the Bot API, so Blob Storage is optional (used only as fallback). For WhatsApp, LINE, and other channels that expect public media URLs, Blob Storage is required for reliable image delivery.
 
 ## OpenClaw Configuration Example
 
@@ -147,6 +151,7 @@ Key files to inspect when modifying behavior:
 
 * `lib/api.js` for MAI-Image-2 API calls
 * `lib/blob.js` for Blob upload and signing behavior
+* `lib/delivery.js` for Telegram Bot API direct photo delivery
 * `lib/tool.js` for dimension validation
 
 ## Limitations
