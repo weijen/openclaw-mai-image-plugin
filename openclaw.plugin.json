@@ -1,8 +1,14 @@
 {
   "id": "mai-image",
   "name": "MAI Image",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Generate images from text prompts using Azure AI Foundry MAI-Image-2 model.",
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": ["mai_image_generate"]
+  },
   "configSchema": {
     "type": "object",
     "additionalProperties": false,

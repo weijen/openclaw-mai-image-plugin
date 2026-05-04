@@ -1,6 +1,6 @@
 {
   "name": "openclaw-mai-image-plugin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "MAI-Image-2 plugin for OpenClaw using Azure AI Foundry",
   "main": "index.js",
